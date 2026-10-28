@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@custom-variant dark (&:is(.dark *));
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --color-border: var(--border); --color-ring: var(--ring); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-muted-foreground: var(--muted-foreground); --radius-sm: calc(var(--radius) * .6); --radius-md: calc(var(--radius) * .8); --radius-lg: var(--radius); }
+:root { color-scheme: dark; --background: oklch(.11 .015 250); --foreground: oklch(.94 .02 240); --primary: oklch(.88 .16 195); --primary-foreground: oklch(.14 .02 240); --muted-foreground: oklch(.58 .025 245); --border: oklch(1 0 0 / 10%); --ring: oklch(.78 .15 195); --radius: .35rem; }
+* { @apply border-border outline-ring/50; }
+html { background:#070a0f; }
+body { @apply bg-background text-foreground; min-width:320px; }
+button, a, select, input { transition: border-color .2s ease, background-color .2s ease, color .2s ease, opacity .2s ease; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 1px solid #67e8f9; outline-offset: 2px; }
+::selection { background: rgb(103 232 249 / .2); color: white; }

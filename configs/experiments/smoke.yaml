@@ -1,0 +1,8 @@
+# Synthetic smoke experiment: verifies the scaffold end to end (config validation, synthetic
+# fixture, provenance manifest). It has no scientific validity and uses no research choice.
+experiment:
+  name: smoke
+  kind: smoke
+  uses_research_choices: []
+  selection:
+    regime: static

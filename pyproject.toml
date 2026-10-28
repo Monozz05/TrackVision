@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trackvision"
+version = "0.1.0"
+description = "Controlled study of error propagation from multi-object tracking into pedestrian trajectory prediction."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2,<3",
+    "pyyaml>=6,<7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+trackvision = "trackvision.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "phase1: reserved for Implementation Plan 'Phase 1 - Data and scene geometry'",
+    "phase2: reserved for Implementation Plan 'Phase 2 - Predictors and the clean baseline'",
+]

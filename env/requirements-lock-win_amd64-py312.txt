@@ -1,0 +1,17 @@
+# TrackVision Phase 0A environment lock (exact record of the tested .venv)
+# Generated from the environment itself by: python -m pip freeze --all --exclude-editable
+# Interpreter: CPython 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36)
+# Platform: Windows-11-10.0.26200-SP0 AMD64
+# Generated: 2026-10-29
+# Not portable: Windows x86-64 + CPython 3.12 only; versions pinned, no artifact hashes.
+# See env/README.md. Do not edit by hand; regenerate from the tested environment.
+colorama==0.4.6
+iniconfig==2.3.1
+numpy==2.5.4
+packaging==26.3
+pip==25.0.1
+pluggy==1.7.0
+Pygments==2.21.0
+pytest==9.2.0
+PyYAML==6.0.3
+setuptools==84.2.1

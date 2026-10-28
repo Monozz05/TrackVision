@@ -1,0 +1,5 @@
+# Approved test fixtures larger than 1 MB (repository policy; see tests/fixtures/README.md).
+# One line per approved file, fields separated by " | ":
+#   path (relative to the repository root) | size_bytes | sha256 | approver | date (YYYY-MM-DD) | reason
+# The approval covers exactly that content: a changed file needs a new approval line.
+# No large fixtures are approved yet.

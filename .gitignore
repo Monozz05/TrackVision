@@ -1,0 +1,114 @@
+# ---------------------------------------------------------------------------
+# 1. Frontend (carried over unchanged from the original v0 .gitignore)
+# ---------------------------------------------------------------------------
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# Environment variables
+.env*.local
+
+# Common ignores (these patterns match at any depth, so they also cover
+# web/node_modules/ and web/.next/ as well as the retained root copies)
+node_modules
+.next/
+.DS_Store
+
+# Plain .env files and their variants may hold credentials; only a template is tracked
+.env
+.env.*
+!.env.example
+
+# Frontend build outputs
+web/out/
+*.tsbuildinfo
+
+# Operating-system and editor metadata
+Thumbs.db
+.vscode/
+.idea/
+
+# ---------------------------------------------------------------------------
+# 2. Python and tooling
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+.pytest_cache/
+.coverage
+.coverage.*
+.ipynb_checkpoints/
+.venv/
+env/**/*.local.yml
+env/**/*.local.yaml
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.tox/
+
+# Logs and experiment-tracker outputs (results belong under runs/)
+*.log
+wandb/
+mlruns/
+lightning_logs/
+
+# ---------------------------------------------------------------------------
+# 3. Data and experiment outputs (ignored by directory)
+# ---------------------------------------------------------------------------
+data/raw/
+data/interim/
+data/cache/
+data/external/
+runs/*
+!runs/README.md
+**/.cache/
+
+# Governing documents: the specification and the Implementation Plan are kept locally
+# but not redistributed in this public repository (see docs/spec/README.md).
+docs/spec/*
+!docs/spec/README.md
+
+# ---------------------------------------------------------------------------
+# 4. Large binaries that are never source assets (ignored everywhere)
+# ---------------------------------------------------------------------------
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.safetensors
+# Generated videos
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# ---------------------------------------------------------------------------
+# 5. Approved exceptions (keep this block last; the last matching rule wins)
+#    Add one "!path" line per approved exception, with a comment giving the
+#    approver, date and reason. Use file patterns, not directories: Git cannot
+#    re-include a file whose parent directory is ignored.
+# ---------------------------------------------------------------------------
+# Test fixtures: deliberate, small data-like fixtures (a tiny log, weights file or
+# video) may be tracked under tests/fixtures/ although these types are ignored
+# elsewhere; size is limited by tests/fixtures/README.md. Only these types are
+# re-included, so every other rule above (caches, credentials, environments,
+# editor/OS metadata, build output) still applies inside tests/fixtures/.
+!tests/fixtures/**/*.log
+!tests/fixtures/**/*.pt
+!tests/fixtures/**/*.pth
+!tests/fixtures/**/*.ckpt
+!tests/fixtures/**/*.onnx
+!tests/fixtures/**/*.engine
+!tests/fixtures/**/*.safetensors
+!tests/fixtures/**/*.mp4
+!tests/fixtures/**/*.avi
+!tests/fixtures/**/*.mov
+!tests/fixtures/**/*.mkv

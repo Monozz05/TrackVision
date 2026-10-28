@@ -1,0 +1,199 @@
+# TrackVision authoritative protocol configuration.
+#
+# This is the only place frozen protocol constants are defined. Code reads them from here and
+# never hard-codes them (Implementation Plan, Phase 0). Every value under `frozen` is transcribed
+# from docs/spec/trackvision_specification_v4_15.md; the comment beside each block names the
+# section. A frozen value changes only through a new specification version with a change-log
+# entry - never by editing this file to make a result or a test come out differently.
+#
+# Blocks:
+#   meta              specification identity (validated against docs/spec/)
+#   frozen            immutable protocol constants; experiment files can never set them
+#   domains           permitted selection sets that are not already listed under `frozen`
+#   research_choices  values the specification requires but does not give; null until fixed
+#                     by a recorded decision, and any experiment that uses one is blocked
+#                     while it is null
+
+meta:
+  schema_version: 1
+  spec:
+    version: "4.15"
+    path: docs/spec/trackvision_specification_v4_15.md
+    sha256: 19216cdae477bf9b5ae50644e1db802a2983fd4b23bf4991ca9d186a7c5495ce
+
+frozen:
+  protocol:
+    static:                                 # §5.3, §5.3.1, §7.2
+      history_len: 8
+      horizon_len: 12
+      sampling_interval_s: 0.4
+      window_stride: 1
+      split: leave_one_scene_out
+      folds: 5
+      scenes: [ETH, HOTEL, UNIV, ZARA1, ZARA2]   # UNIV = students003 (§5.3.1)
+    moving:                                 # §5.3, §5.3.2, §5.3.3, §6.4
+      split: leave_one_sequence_group_out
+      sampling_interval_s: 0.4
+      window_stride: 1
+      resampling_tolerance_s: 0.2
+      primary:
+        history_len: 8
+        horizon_len: 12
+        min_valid_windows: 2000
+      fallback:                             # the only permitted moving-camera fallback
+        history_len: 8
+        horizon_len: 8
+        min_valid_windows: 500              # below this, moving prediction is unavailable
+      ego_pose_coverage_min: 0.95
+      timestamp_mismatch_max_s: 0.2
+    min_seeds: 3                            # §5.3 (">= 3"; the seed values are a research choice)
+
+  geometry:                                 # §4.2, §4.3, §11.2, §14.1 (P2 gate)
+    conventions:
+      image: pixels, origin top-left, y downward
+      ground_plane: z = 0 in the relevant frame
+      platform_frame: x forward, y left, z up, origin at platform reference point
+      world_frame: fixed, right-handed, z up, origin at the sequence's initial platform pose
+      rotation: yaw about z for planar motion; full SO(3) where datasets provide it
+      transform_direction: source frame to target frame
+    trajectory_point:
+      bbox_2d: bottom_centre                # ((x1 + x2) / 2, y2)
+      annotation_3d: bottom_face_centre_projected_to_ground   # never the 3D box centroid
+    roundtrip_tolerance_px:
+      synthetic_float64: 1.0e-6
+      real_float64: 1.0e-3
+      float32: 1.0e-2
+    median_speed_diagnostic_range_mps: [1.0, 1.7]   # diagnostic reference, not an acceptance criterion
+
+  injection:                                # §3.5, §3.6
+    grids:                                  # requested severity levels; every grid includes zero
+      A:  {parameter: sigma, unit: m, levels: [0.0, 0.05, 0.10, 0.20, 0.35, 0.50]}
+      B:  {parameter: p, unit: probability, levels: [0.0, 0.05, 0.10, 0.20, 0.30, 0.40]}
+      C:  {parameter: p, unit: probability_per_timestep, levels: [0.0, 0.02, 0.05, 0.10, 0.20, 0.30]}
+      D:  {parameter: p, unit: probability_per_timestep, levels: [0.0, 0.025, 0.05, 0.10, 0.15, 0.20]}
+      E1: {parameter: sigma_t, unit: m, levels: [0.0, 0.02, 0.05, 0.10, 0.20]}
+      E2: {parameter: sigma_r, unit: deg, levels: [0.0, 0.1, 0.25, 0.5, 1.0]}
+      E3: {parameter: r, unit: fraction_of_distance_travelled, levels: [0.0, 0.005, 0.01, 0.02, 0.05]}
+    conditions:                             # condition -> grid; B1 and B2 share the B grid
+      A:  {family: A, grid: A, regimes: [static, moving]}
+      B1: {family: B, grid: B, regimes: [static, moving], reconstruction: linear_interior_gaps_only}
+      B2: {family: B, grid: B, regimes: [static, moving], reconstruction: none}
+      C:  {family: C, grid: C, regimes: [static, moving]}
+      D:  {family: D, grid: D, regimes: [static, moving]}
+      E1: {family: E, grid: E1, regimes: [moving]}
+      E2: {family: E, grid: E2, regimes: [moving]}
+      E3: {family: E, grid: E3, regimes: [moving]}
+    d_max_m: 2.0                            # D_MAX, frozen proximity threshold for mode D
+    d_cooldown: locked_until_end_of_segment # primary cascade-suppression rule
+
+  association:                              # §3.7
+    tracker_gt_assoc_iou_threshold: 0.5
+    frag_gap_max_steps: 5
+    switch_gap_max_steps: 1
+
+  collision:                                # §3.8, §2.3.10
+    d_conflict_m: 1.0
+    d_warn_m: [1.0, 1.5, 2.0, 2.5]
+    tau_event_s: 1.0
+
+  predictors:                               # §5.4
+    primary_set: [CV, CA, LSTM, GRU]
+    cv_min_final_observations: 2
+    ca_min_final_observations: 3
+    learned:
+      encoder_input: frame_to_frame_observed_displacements   # history_len - 1 vectors
+      decoder_target: frame_to_frame_future_displacements    # horizon_len vectors
+      reconstruction: cumulative_sum_from_last_observation
+      hidden_size: 128
+      num_layers: 1
+      attention: false
+      autoregressive_feedback: false
+      loss: mse_on_displacements
+      optimizer: adam
+      learning_rate: 1.0e-3
+      lr_scheduler: reduce_lr_on_plateau
+      batch_size: 64
+      max_epochs: 200
+      early_stopping_metric: validation_ade
+      early_stopping_patience: 20
+      grad_clip_norm: 1.0
+
+  analysis:
+    representative_conditions: {A: A, B: B2, C: C, D: D, E: E3}   # §2.2.0, §2.2.1, §2.2.3
+    dominant_mode_codominance_gap: 0.1      # §2.2.3
+    recovery_practical_threshold: 0.25      # §2.2.4
+    inverse_requirement_q: [0.05, 0.10, 0.20]   # §2.2.6
+    history_ablation:                       # §2.2.5 (P-15)
+      history_lens: [4, 6, 8, 10, 12]
+      horizon_len: 12
+      clean_ratio_max: 1.1
+      delta_audc_max: 0.1
+      epsilon_audc: 0.01
+
+  hypotheses:                               # §2.3
+    tolerances:                             # §2.3.12
+      delta_h3: 0.1
+      delta_h5: 0.1
+      delta_h6: 0.1
+      delta_h9: 0.05
+      delta_h10: 0.1
+    h4_slope_ratio_min: 1.5                 # §2.3.2
+    h4_delta_aic_min: 2.0                   # §2.3.2
+    h7_delta_rho_min: 0.15                  # §2.3.6
+    h8:                                     # §2.3.4
+      mode_pairs: [[A, B], [A, C], [A, D], [B, C], [B, D], [C, D]]
+      family_b_representative: B2
+      identity_mode_order: [C, D]           # C is applied before D
+      cell_tolerance_fraction: 0.05
+    h10_classes:                            # §2.3.3, over the 8-step observation window
+      straight_heading_change_lt_deg: 15.0
+      straight_min_speed_gt_mps: 0.3
+      turning_heading_change_ge_deg: 45.0
+      stop_go_low_speed_lt_mps: 0.2
+      stop_go_low_speed_min_consecutive_steps: 2
+      stop_go_max_speed_gt_mps: 0.8
+
+  datasets:
+    mot17:                                  # §6.2
+      split: half
+      static_sequences: [MOT17-02, MOT17-04, MOT17-09]
+      moving_sequences: [MOT17-05, MOT17-10, MOT17-11, MOT17-13]
+    moving_candidates: [JRDB, KITTI Tracking, nuScenes]   # §6.3
+
+  trackers:                                 # §11.4, §11.5
+    primary: [ByteTrack, BoT-SORT]
+    canonical_param_names: [track_high_thresh, track_low_thresh, new_track_thresh, track_buffer, match_thresh, gmc_method, with_reid]
+
+domains:
+  regime: [static, moving]
+  error_mode: [none, A, B1, B2, C, D, E1, E2, E3]   # "combined" is added with P-10
+
+research_choices:
+  seeds:
+    value: null
+    required_by: Implementation Plan 'Phase 2 - Predictors and the clean baseline'
+    spec: §5.3 requires at least frozen.protocol.min_seeds seeds; the values are not specified
+  inner_validation_rotation:
+    value: null
+    required_by: Implementation Plan 'Phase 2 - Predictors and the clean baseline'
+    spec: §5.4 requires a fixed deterministic rule recorded in config, mapping each test scene to a different validation scene
+  moving_dataset:
+    value: null
+    required_by: Implementation Plan 'Phase 1 - Data and scene geometry' (after the Phase 0B feasibility gate)
+    spec: §6.3, one of frozen.datasets.moving_candidates, selected by the §6.4 gate
+  trackers_evaluated_set:
+    value: null
+    required_by: Implementation Plan 'Phase 5 - The real tracker'
+    spec: §11.5, must include frozen.trackers.primary; record the evaluated set at implementation time
+  tracker_params:
+    value: null
+    required_by: Implementation Plan 'Phase 5 - The real tracker'
+    spec: §11.4, values for frozen.trackers.canonical_param_names, validated against the installed tracker
+  h8_generation_attempts:
+    value: null
+    required_by: Implementation Plan 'Phase 4 - The core sweep'
+    spec: §2.3.4 step 4, "the predeclared number of generation attempts"; the number is not specified
+  discontinuity_rejection_v_max_mps:
+    value: null
+    required_by: Implementation Plan 'Phase 6 - Mitigation and the application layer'
+    spec: §9.2, speed threshold v_max for discontinuity rejection; the value is not specified
