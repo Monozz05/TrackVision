@@ -3,7 +3,8 @@
 Usage: python scripts/check_staged.py [--repo PATH]
 
 Exits 1 and lists every offending path if anything staged (added, copied, modified, renamed or
-type-changed) is: data or run output, a governing document under docs/spec/ (only its README is
+type-changed) is: data or run output (only data/README.md and checksum manifests directly under
+data/manifests/*.sha256 are tracked), a governing document under docs/spec/ (only its README is
 tracked), a credential, an environment directory, a cache or build
 output, test-coverage output, a v0/Vercel sandbox artefact, editor or operating-system metadata,
 experiment-tracker output, a log file, model weights, a generated video, or larger than 1 MB
@@ -82,7 +83,8 @@ def rule_violation(path: str) -> str | None:
     p = PurePosixPath(lower)
     parts, name, suffix = set(p.parts), p.name, p.suffix
     in_fixtures = lower.startswith(FIXTURES_PREFIX)
-    if lower.startswith("data/") and lower not in ALLOWED_IN_DATA_RUNS:
+    if (lower.startswith("data/") and lower not in ALLOWED_IN_DATA_RUNS
+            and not re.fullmatch(r"data/manifests/[^/]+\.sha256", lower)):
         return "dataset content (data/)"
     if lower.startswith("runs/") and lower not in ALLOWED_IN_DATA_RUNS:
         return "experiment output (runs/)"

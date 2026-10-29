@@ -46,13 +46,18 @@ def test_clean_staged_set_passes(repo):
         "tests/fixtures/model.PT": b"\0", "tests/fixtures/Clip.MP4": b"\0", ".env.example": b"KEY=\n",
         "web/.env.example": b"KEY=\n", "docs/coverage.md": b"#\n", "src/trackvision/metrics/coverage.py": b"\n",
         "env/local-notes.md": b"#\n", "configs/local.yaml": b"a: 1\n", "web/components/vercel-badge.tsx": b"x\n",
+        # checksum manifests directly under data/manifests/ are the one tracked kind of data file
+        "data/manifests/ewap.sha256": b"0" * 64 + b"  x\n", "data/manifests/MOT17.SHA256": b"0" * 64 + b"  y\n",
     })
     proc = _check(repo)
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
 @pytest.mark.parametrize("path", [
-    "data/raw/eth.avi.txt", "runs/smoke-x/manifest.json", ".env", "web/.env.production",
+    "data/raw/eth.avi.txt", "runs/smoke-x/manifest.json",
+    # only *.sha256 directly under data/manifests/ is allowed; look-alikes stay blocked
+    "data/manifests/notes.txt", "data/manifests/sub/x.sha256", "data/manifests/x.sha256.bak",
+    "data/raw/manifests/x.sha256", "data/x.sha256", ".env", "web/.env.production",
     "deploy/server.pem", "keys/id_rsa", "credentials-gcp.json", ".venv/pyvenv.cfg",
     "venv2/Lib/site-packages/numpy/__init__.py",
     "env/dev.local.yml", "src/__pycache__/m.cpython-312.pyc", "web/node_modules/a/i.js",

@@ -15,7 +15,7 @@ specification disagree, the code is wrong by default.
 | Phase | State |
 |---|---|
 | Phase 0A - Repository audit and scaffold | Scaffold, configuration system, test harness and synthetic smoke run in place, pending review |
-| Phase 0B - Feasibility gates | **Not started** |
+| Phase 0B - Feasibility gates | **In progress, not closed.** G2, G6 and G8 passed; G1, G3, G4 and G5 are blocked on user actions; G7 deferred to Phase 1. See [`docs/phase-0b-report.md`](docs/phase-0b-report.md) |
 | Phases 1-7 | **Not started** |
 
 **Not yet verified:**

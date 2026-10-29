@@ -48,6 +48,7 @@ MUST_TRACK = [
     "src/trackvision/config.py", "tests/fixtures/tiny_trajectory.npz", "tests/fixtures/clip.mp4",
     "reports/figures/degradation.png", "runs/README.md", "data/README.md",
     "env/requirements-lock-win_amd64-py312.txt", "env/README.md", "docs/spec/README.md",
+    "data/manifests/ewap.sha256", "data/manifests/mot17.sha256",
     "web/package.json", "web/pnpm-lock.yaml", "scripts/check_staged.py",
     # look-alikes that must stay tracked
     "web/app/page.tsx", "web/tsconfig.json", "web/next-env.d.ts", "src/trackvision/io/output.py",
