@@ -1,2 +1,2 @@
-import { AnalysisPage } from '@/components/trackvision-app'
+import { AnalysisPage } from '@/components/analysis'
 export default function Page(){ return <AnalysisPage/> }

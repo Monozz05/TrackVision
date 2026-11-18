@@ -16,7 +16,10 @@ from conftest import BASE_PATH, REPO_ROOT, SMOKE_PATH
 # Pinned so that any change to base.yaml, smoke.yaml or the canonical serialisation is noticed
 # deliberately. If base.yaml legitimately changes (a new spec version), update this value in
 # the same change and say why in the commit message.
-GOLDEN_SMOKE_HASH = "32a95bb9586fb8480ce78577ea23448f81cc29a40bff0d2801b525e1aca7b058"
+# Updated 2026-10-31 for docs/decisions/0001-p2d-protocol-decisions.md (B, C): setting research_choices
+# seeds and inner_validation_rotation changed the hash from 32a95bb958...; with those two values null
+# the previous value is reproduced exactly, so nothing else changed.
+GOLDEN_SMOKE_HASH = "73cf4b97eac5eab2cf16de69804ffe8e46e471974c233fe185dcc207a34bede1"
 
 
 def _hash_and_id(exp_path, base_path=BASE_PATH):

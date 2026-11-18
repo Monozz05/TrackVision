@@ -16,7 +16,8 @@ specification disagree, the code is wrong by default.
 |---|---|
 | Phase 0A - Repository audit and scaffold | Scaffold, configuration system, test harness and synthetic smoke run in place, pending review |
 | Phase 0B - Feasibility gates | **In progress, not closed.** G2, G6 and G8 passed; G1, G3, G4 and G5 are blocked on user actions; G7 deferred to Phase 1. See [`docs/phase-0b-report.md`](docs/phase-0b-report.md) |
-| Phases 1-7 | **Not started** |
+| Phases 1-6 | Engineering scope only; no research gate is passed. See [`docs/decisions/`](docs/decisions/) |
+| Phase 7 - The platform | Dashboard over stored results ([decision 0007](docs/decisions/0007-read-only-results-platform.md)) with an exploratory scene workspace ([decision 0008](docs/decisions/0008-exploratory-scene-workspace.md)), started ahead of the P6 checkpoint at the project owner's instruction |
 
 **Not yet verified:**
 - CUDA and the RTX 3060 GPU
@@ -73,6 +74,86 @@ skipped or bypassed.
 | 4 | Run folder already exists |
 | 5 | No runner exists yet for this experiment kind |
 
+## Results dashboard
+
+The Next.js frontend in `web/` has four main pages. **Workspace** lets you pick a scene, watch its video with a box, an ID and a trail on each person, and set errors with sliders, alone or combined. Identity switches are highlighted, and you can jump between them. **Analysis** shows simple graphs for any scene, each error measured live at every tested level ([decision 0016](docs/decisions/0016-simple-analysis-and-applications.md)). **Applications** has a dropdown of real-world uses, each with which error to reduce first and why. Those priorities are engineering judgement, not measurements, and no collision performance has been measured. **Test Videos** shows the same working on freely licensed street videos: boxes, IDs, trails, CV and CA forecasts, and error sliders. These videos have no true positions, so it shows no ADE or FDE ([decision 0017](docs/decisions/0017-test-videos-section.md)).
+
+`runs/` stays the source of truth, and the backend has no write route. Slider results run the frozen injectors live, are labelled exploratory, and are never saved. Every scene has error sliders and forecasts. ETH, HOTEL and the synthetic scenes work in metres. UCY and MOT17 have no calibration, so they work in video pixels: those values can't be compared with metres or between scenes, and MOT17 forecasts are for viewing only ([decision 0011](docs/decisions/0011-pixel-errors-on-ucy-and-mot17.md)).
+
+IDs come from the best source each dataset has: the IoU tracker on YOLO11 boxes on MOT17, human annotations on ETH, HOTEL and UCY, and the scene generator on synthetic scenes ([decisions 0010](docs/decisions/0010-tracking-overlay-on-every-scene.md) and [0015](docs/decisions/0015-yolo11-on-every-real-video.md)).
+
+Each dataset has its own dropdown, 52 scenes in all. Long recordings are also offered as numbered parts with their own video. A part is a stretch of one recording, not a separate scene, so its values are never pooled with other parts, and stored results cover full recordings only ([decision 0012](docs/decisions/0012-dataset-dropdowns-and-numbered-parts.md)).
+
+The first time a scene plays, its video is prepared in the Git-ignored `data/cache/`, which needs `ffmpeg` on PATH. This takes from a few seconds to a few minutes per scene and happens once.
+
+**YOLO11 (optional).** This installs PyTorch and Ultralytics in their own environment outside the repository. Run it once from the repository root. Without `-InstallOnly` it also runs detection on every real video, which puts YOLO back on ETH, HOTEL and UCY, where annotated boxes were chosen instead because it finds far fewer people there. To refresh MOT17 alone, run `scripts/yolo_detect_mot17.py` with that environment's Python. This is for display only: it never reaches ADE or FDE, and it is not experiment P-1 or P-9 ([decisions 0009](docs/decisions/0009-yolo11-display-detections.md) and [0015](docs/decisions/0015-yolo11-on-every-real-video.md)).
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup_yolo.ps1 -InstallOnly
+```
+
+**Test videos.** The originals live in the Git-ignored `videos/` folder, with their credits in `videos/SOURCES.md`. With YOLO11 installed, these two commands prepare them. Each skips what is already done.
+
+```powershell
+.venv\Scripts\python.exe scripts\prepare_test_videos.py
+"$env:USERPROFILE\tv-envs\yolo-py312\Scripts\python.exe" scripts\yolo_detect_test_videos.py --weights "$env:USERPROFILE\tv-envs\yolo-py312\weights\yolo11m.pt"
+```
+
+**First-time setup:**
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r env\requirements-platform-win_amd64-py312.txt
+cd web
+pnpm install
+```
+
+**Start both** from the repository root, or use two terminals as below. The script stops and names the process if a port is taken.
+
+```powershell
+.\scripts\dev.ps1
+```
+
+```powershell
+# Terminal 1: backend
+.venv\Scripts\python.exe -m uvicorn trackvision.platform.app:app --reload --reload-dir src --host 127.0.0.1 --port 8000
+
+# Terminal 2: frontend
+cd web
+pnpm dev
+```
+
+| What | Where |
+|---|---|
+| Dashboard | http://localhost:3000 |
+| API health | http://127.0.0.1:8000/api/health |
+| API documentation | http://127.0.0.1:8000/docs |
+
+**Environment variables:**
+
+| Variable | Used by | Default |
+|---|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | Frontend, read at start or build | `http://127.0.0.1:8000/api` |
+| `TRACKVISION_RUNS_DIR` | Backend | `runs/` |
+| `TRACKVISION_CORS_ORIGINS` | Backend, comma-separated | `http://localhost:3000,http://127.0.0.1:3000` |
+
+**Checking that real data is shown.** The header reads `Backend connected · N records`, and N should match `experiment_records` at `/api/health`. Each result shows its stored run ID, label and evidence level. Compare any value with that run's files under `runs/`. There is no mock data, so a screen with no backend shows an error rather than numbers.
+
+**Troubleshooting:**
+
+| Symptom | Cause and fix |
+|---|---|
+| `error while attempting to bind` on port 8000 | Another process holds the port. Find it with `Get-NetTCPConnection -LocalPort 8000`, stop it yourself, or use other ports: `.\scripts\dev.ps1 -BackendPort 8010 -FrontendPort 3001` |
+| `Port 3000 is in use` from Next.js | The frontend moved to another port, so the browser's origin is not allowed by the backend. Use the script above, or set `TRACKVISION_CORS_ORIGINS` to include the new port |
+| `dev.ps1 cannot be loaded because running scripts is disabled` | Run it through PowerShell for this one command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\dev.ps1` |
+| Browser says the site can't be reached | Nothing is running at that address. The dashboard only exists while the start command is running, so start it again and keep that terminal open |
+| A different dashboard appears | Another application holds that port. Check the port printed by the start command |
+| Some people in a video have no box | ETH, HOTEL and UCY do not annotate everyone, and some frames have no annotations. On MOT17 the detector can miss people. Nothing is drawn where nothing is recorded |
+| "Preparing video" stays on, or the video fails | The first build of a scene can take minutes. If it fails, check that `ffmpeg` and `ffprobe` are on PATH for the terminal running the backend |
+| "It is not the TrackVision results API" | Something else answers at the configured address. Check the port and `NEXT_PUBLIC_API_BASE_URL` |
+| "Backend disconnected" | The backend is not running, or CORS blocks this origin. Start it, check `/api/health`, then press Retry |
+| A run shows `invalid` | A stored file is malformed or differs from its recorded hash. The reason is shown on the run. Its results are deliberately not served |
+| Seed-level records are slow the first time | Every cell's digest is verified on the first read of a sweep. Later reads are immediate |
+
 ## Configuration
 
 [`configs/base.yaml`](configs/base.yaml) is the **only** place protocol constants are defined. Code
@@ -87,17 +168,22 @@ reads them and never hard-codes them. The file has four blocks:
   - the predictor training constants (§5.4);
   - the hypothesis tolerances (§2.3).
 - `domains`: permitted selections that aren't already listed under `frozen`.
-- `research_choices`: values the specification requires but doesn't give. All seven are **null**,
-  and any experiment that uses one is blocked:
-  - `seeds`
-  - `inner_validation_rotation`
+- `research_choices`: values the specification requires but doesn't give. Two of the seven are
+  set by a recorded decision
+  ([docs/decisions/0001-p2d-protocol-decisions.md](docs/decisions/0001-p2d-protocol-decisions.md),
+  2026-10-31):
+  - `seeds`: `[0, 1, 2]`
+  - `inner_validation_rotation`: ETH→UNIV, HOTEL→ZARA1, UNIV→ZARA2, ZARA1→ETH, ZARA2→HOTEL, for
+    the real static scenes only
+
+  The other five are still **null**, and any experiment that uses one is blocked:
   - `moving_dataset`
   - `trackers_evaluated_set`
   - `tracker_params`
   - `h8_generation_attempts`
   - `discontinuity_rejection_v_max_mps`
 
-  They must be fixed by a recorded decision before the phase that needs them, and **before**
+  Each must be fixed by a recorded decision before the phase that needs it, and **before**
   looking at any results.
 - `meta`: the specification version, its path and its SHA-256. Validation fails if the local copy
   in `docs/spec/` is missing or doesn't match.
@@ -151,11 +237,12 @@ never change a frozen value.
 | `tests/invariants/` | Reserved composition and leakage checks |
 | `tests/fixtures/` | Synthetic known-answer data |
 | `docs/` | `spec/` (your local, untracked copies of the governing documents, plus the tracked README) and the research roadmap, [`implementation-roadmap.md`](docs/implementation-roadmap.md) |
-| `env/` | The environment notes and the pip lock |
+| `env/` | The environment notes, the pip lock and the platform package record |
 | `data/` | Datasets, Git-ignored apart from the README |
 | `runs/` | One folder per experiment ID, Git-ignored |
-| `scripts/` | `check_staged.py`, the pre-commit staged-file check |
-| `web/` | The Next.js frontend, relocated unchanged; reserved for Implementation Plan Phase 7 |
+| `scripts/` | `check_staged.py`, the pre-commit staged-file check; `dev.ps1`, which starts the dashboard; `setup_yolo.ps1` and the `yolo_detect_*.py` scripts, which generate YOLO11 boxes; and `prepare_test_videos.py`, which builds the Test Videos copies |
+| `videos/` | Git-ignored. Downloaded street videos for the Test Videos section, with credits in `SOURCES.md` |
+| `web/` | The Next.js frontend, connected to stored results through `src/trackvision/platform/` |
 
 ## Git workflow
 

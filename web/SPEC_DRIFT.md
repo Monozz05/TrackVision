@@ -1,4 +1,6 @@
-# Frontend mock values that differ from specification v4.15
+# Frontend mock values that differed from specification v4.15
+
+**Resolved.** The read-only integration (decision 0007) removed all of these mock values, and every value on screen now comes from a stored run. This note is kept as a record of what the original frontend contained.
 
 The files in `web/` were moved here byte-identical from the repository root in Phase 0A.
 They were not edited. This note records the places where the frontend's **mock** values

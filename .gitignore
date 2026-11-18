@@ -65,6 +65,7 @@ data/raw/
 data/interim/
 data/cache/
 data/external/
+videos/
 runs/*
 !runs/README.md
 **/.cache/

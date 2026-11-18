@@ -39,6 +39,30 @@ A gate value outside its stated range triggers investigation; it does not automa
 the phase. A failed gate downgrades scope only under a rule that was declared in advance. The
 geometry composition tests and the injector tests cannot be downgraded.
 
+Phase 4 protocol decisions, including how the Plan's Phase 3 monotonicity gate is evaluated for mode D,
+are recorded in [decision 0004](decisions/0004-phase-4-protocol-decisions.md).
+
+The limited Phase 5 and Phase 6 engineering scope, which closes no research gate, is recorded in
+[decision 0006](decisions/0006-phase-5-6-engineering-scope.md).
+
+The read-only results platform, which adds no research evidence and started ahead of the P6 checkpoint at the project
+owner's instruction, is recorded in [decision 0007](decisions/0007-read-only-results-platform.md). Its exploratory scene
+workspace, which runs the frozen injectors live and never saves results, is recorded in
+[decision 0008](decisions/0008-exploratory-scene-workspace.md). YOLO11 boxes on MOT17, for display only, are recorded in
+[decision 0009](decisions/0009-yolo11-display-detections.md). The tracking overlay on every scene is recorded in
+[decision 0010](decisions/0010-tracking-overlay-on-every-scene.md). Live errors in pixels on UCY and MOT17, and the
+exception to specification section 6.1.1 that allows them for viewing only, are recorded in
+[decision 0011](decisions/0011-pixel-errors-on-ucy-and-mot17.md). Dataset dropdowns, numbered parts of long recordings and
+more synthetic scenes are recorded in [decision 0012](decisions/0012-dataset-dropdowns-and-numbered-parts.md). The rebuilt
+Analysis tab, and the check of E5 to E8 that went with it, are recorded in
+[decision 0013](decisions/0013-analysis-tab-rebuild.md). ETH's video rate is recorded in
+[decision 0014](decisions/0014-eth-video-frame-rate.md), and YOLO11 boxes on every real video, for display only, in
+[decision 0015](decisions/0015-yolo11-on-every-real-video.md). The simple Analysis page for every scene, and the Applications
+page with its exception to the language rule of specification section 1.2, are recorded in
+[decision 0016](decisions/0016-simple-analysis-and-applications.md). The Test Videos section, on downloaded street videos with no
+ground truth and so no accuracy values, is recorded in [decision 0017](decisions/0017-test-videos-section.md). None of this adds
+research evidence.
+
 ## Commit policy
 
 The repository is private, has no remote, and nothing is pushed without explicit approval.

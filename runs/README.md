@@ -12,8 +12,7 @@ reproduces its identity.
 - `fixture_summary.json`: the smoke experiment's synthetic checks.
 - `manifest.json`: provenance, namely timestamp, Git state, environment and spec hash.
 
-The full experiment record schema (spec v4.15 §11.3) is built in Implementation Plan 'Phase 1 -
-Data and scene geometry'.
+The experiment record schema (spec v4.15 §11.3) is defined in `src/trackvision/experiments/record.py`; no runner writes it yet.
 
 An existing run folder is never overwritten unless `--force` is passed, and `--force` rewrites
 only the run's own files.

@@ -1,71 +1,175 @@
-export type SourceType = 'dataset' | 'uploaded-video'
-export type GroundTruthStatus = 'available' | 'unavailable' | 'pending'
-export type ExperimentStatus = 'draft' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled'
-export type Tracker = 'ByteTrack' | 'BoT-SORT'
-export type PredictionModel = 'Constant Velocity' | 'Constant Acceleration' | 'LSTM' | 'GRU'
-export type ErrorType = 'Localization Noise' | 'Observation Dropout' | 'Track Fragmentation' | 'Identity Switching' | 'Ego-Motion Error'
-export type WorkflowStage = 'overview' | 'data' | 'tracking' | 'error-injection' | 'error-visualization' | 'prediction' | 'analysis' | 'application-impact'
-export type ArtifactType = 'video' | 'tracking_result' | 'trajectory' | 'prediction' | 'error_visualization' | 'chart' | 'report' | 'model'
+// Contracts for the TrackVision API (src/trackvision/platform). Every result value is nullable: a value the pipeline did
+// not record is null here and an em dash on screen. There is no mock data in this file, so no screen can fall back to it.
+export type ExperimentStatus = 'complete' | 'incomplete' | 'invalid'
+export type EvidenceLevel = 'engineering_only' | 'engineering_and_descriptive' | 'descriptive_local_only' | 'feasibility_only' | 'diagnostic_only' | 'scaffold_check'
+export type ExperimentKind = 'sweep' | 'mot17_tracking' | 'synthetic_tracker' | 'engineering_analysis' | 'ewap_baseline' | 'ewap_injection' | 'synthetic_feasibility' | 'geometry_validation' | 'smoke' | 'unrecognised'
+export type ErrorKind = 'not_configured' | 'disconnected' | 'not_found' | 'rejected' | 'server'
 
-export interface VideoMetadata { name: string; size?: string; resolution?: string; fps?: number; duration?: string; frameCount?: number }
-export interface Dataset { id: string; name: string; scene: string; sequence: string; frameCount: number; fps: number; resolution: string; annotationAvailability: GroundTruthStatus; calibrationAvailability: GroundTruthStatus; regime: string }
-export interface Detection { frame: number; x: number; y: number; width: number; height: number; confidence: number; className: string }
-export interface Track { id: number; state: 'active' | 'lost' | 'finished'; length: number; lastFrame: number }
-export interface TrajectoryPoint { x: number; y: number; timestamp?: number; frame: number; trackId: number; trajectoryType: 'ground-truth' | 'observation' | 'corrupted' | 'prediction' }
-export interface Trajectory { trackId: number; points: TrajectoryPoint[]; groundTruthAvailable: boolean }
+export interface ApiResponse<T> { data: T | null; status: 'success' | 'empty' | 'error' | 'unavailable'; message?: string; errorKind?: ErrorKind }
+
+export interface Health { status: string; version: string; read_only: boolean; results_directory_available: boolean; experiment_records: number; invalid_records: number; skipped_folders: number; timestamp: string }
+
+export interface Stat { mean: number | null; sd?: number | null; n_valid?: number | null; n_undefined?: number | null; undefined?: Record<string, string> | null; median?: number | null; n?: number | null }
+
+export interface Provenance {
+  git: { sha?: string; dirty?: boolean } | null
+  environment: Record<string, string> | null
+  specification: { sha256?: string; version?: string } | null
+  config_hash: string | null
+  settings_hash: string | null
+  source_sha256: string | null
+  spec_sha256: string | null
+  dataset_manifest_hash: string | null
+  trackeval_commit: string | null
+  licence: string | null
+  results_sha256: string | null
+  version: string | null
+  trackvision_version: string | null
+  association_mechanism: string | null
+  association_status: string | null
+  association_note: string | null
+  association_blocker: string | null
+  association_sidecar: { bound_to_results: boolean; proposal_0003?: string | null; spec_section?: string | null } | null
+  [key: string]: unknown
+}
+
+export interface Integrity { status: 'verified' | 'mismatch' | 'not_recorded'; verified: number; failed: string[] }
+
+export interface Experiment {
+  experiment_id: string
+  record_id: string | null
+  kind: ExperimentKind
+  kind_label: string
+  scope: string | null
+  timestamp: string | null
+  status: ExperimentStatus
+  status_reason: string | null
+  evidence_level: EvidenceLevel | null
+  research_results: boolean | null
+  label: string | null
+  notice: string | null
+  latest_in_series: boolean
+  experiments: (string | null)[]
+  datasets: (string | null)[]
+  scenes: (string | null)[]
+  predictors: string[]
+  conditions: string[]
+  histories: number[]
+  seeds: number[]
+  horizon_len: number | null
+  detector: string | null
+  tracker: string | null
+  counts: { expected_cells: number | null; finished_cells: number | null; by_status: Record<string, number> | null; by_experiment: Record<string, Record<string, number>> | null; scope_complete: boolean | null; research_complete: boolean | null } | null
+  integrity: Integrity
+  provenance: Provenance
+}
+
+export interface ExperimentPage { items: Experiment[]; total: number; limit: number; offset: number; counts: { by_kind: Record<string, number>; by_status: Record<string, number>; by_evidence: Record<string, number>; all: number } }
+export interface ViewIndex { items: Experiment[]; default: string | null }
+export type ExperimentView = 'tracking' | 'error-injection' | 'prediction' | 'analysis'
+export interface Artifact { name: string; type: 'record' | 'chart'; size_bytes: number; served: boolean }
+export interface ExperimentDetail { experiment: Experiment; views: ExperimentView[]; artifacts: Artifact[]; stored_summary: Record<string, unknown> | null }
+
+
 export interface TrackingMetrics { mota: number | null; idf1: number | null; hota: number | null; idSwitches: number | null; fragmentations: number | null }
-export interface TrackingResult { status: ExperimentStatus; activeTracks: number | null; totalDetections: number | null; averageTrackLength: number | null; fps: number | null; latency: number | null; metrics: TrackingMetrics | null; tracks: Track[] }
-export interface ErrorConfiguration { type: ErrorType; enabled: boolean; severity: number; parameters: Record<string, string | number | boolean>; mode: 'single' | 'combined' }
-export interface ErrorResult { status: ExperimentStatus; requestedSeverity: number | null; achievedSeverity: number | null; affectedTracks: number | null; affectedFrames: number | null; events: Array<{ frame: number; label: string }> }
-export interface PredictionConfiguration { models: PredictionModel[]; historyLength: number; horizonLength: number; selectedTrack: number | null }
-export interface PredictionMetrics { ade: number | null; fde: number | null; rmse: number | null; perStepError: number[]; coverage: number | null }
-export interface PredictionResult { status: ExperimentStatus; modelVersion: string | null; metrics: PredictionMetrics | null }
-export interface Artifact { id: string; type: ArtifactType; name: string; path?: string; createdAt: string; experimentId: string; status: ExperimentStatus }
-export interface ExperimentFilter { dataset?: string; scene?: string; regime?: string; tracker?: Tracker; predictor?: PredictionModel; errorType?: ErrorType; severity?: string; historyLength?: string; horizonLength?: string; experiment?: string }
-export interface AnalysisResult { hasData: boolean; isMock: boolean; series: Array<Record<string, string | number>> }
-export interface ApplicationImpactResult { hasData: boolean; isMock: boolean; clean: Record<string, number | null>; errorControlled: Record<string, number | null> }
-export interface Experiment { experimentId: string; timestamp: string; sourceType: SourceType; sourceName: string; sourceHash: string | null; dataset: string | null; scene: string | null; regime: string | null; groundTruthAvailable: boolean; detector: string; detectorVersion: string | null; detectorParameters: Record<string, unknown>; tracker: Tracker | null; trackerVersion: string | null; trackerParameters: Record<string, unknown>; stabilizer: string | null; stabilizerVersion: string | null; predictor: PredictionModel | null; predictorVersion: string | null; predictorParameters: Record<string, unknown>; historyLength: number | null; horizonLength: number | null; errorType: ErrorType | null; errorParameters: Record<string, unknown>; requestedSeverity: number | null; achievedSeverity: number | null; mitigation: string | null; seed: number | null; status: ExperimentStatus; artifacts: Artifact[]; results: { tracking?: TrackingResult; error?: ErrorResult; prediction?: PredictionResult; analysis?: AnalysisResult; impact?: ApplicationImpactResult } }
-export interface ExperimentState { experiment: Experiment; activeStage: WorkflowStage; video: VideoMetadata | null; sourceType: SourceType; groundTruthStatus: GroundTruthStatus; tracking: TrackingResult | null; errorConfiguration: ErrorConfiguration | null; errorResult: ErrorResult | null; predictionConfiguration: PredictionConfiguration; prediction: PredictionResult | null; filters: ExperimentFilter }
-export interface ApiResponse<T> { data: T | null; status: 'success' | 'empty' | 'error'; message?: string }
-export interface JobProgressState { status: ExperimentStatus; progress: number | null; currentStage: string | null; elapsedSeconds: number | null }
-export interface Stage { id: WorkflowStage; number: string; label: string; shortLabel: string; href: string }
-export const workflowStages: Stage[] = [
-  { id:'overview', number:'01', label:'Overview', shortLabel:'Overview', href:'/overview' },
-  { id:'data', number:'02', label:'Data & Ground Truth', shortLabel:'Data', href:'/data' },
-  { id:'tracking', number:'03', label:'Tracking', shortLabel:'Tracking', href:'/tracking' },
-  { id:'error-injection', number:'04', label:'Error Injection', shortLabel:'Error', href:'/error-injection' },
-  { id:'error-visualization', number:'05', label:'Error Visualization', shortLabel:'Visualize', href:'/error-visualization' },
-  { id:'prediction', number:'06', label:'Trajectory Prediction', shortLabel:'Prediction', href:'/prediction' },
-  { id:'analysis', number:'07', label:'Analysis', shortLabel:'Analysis', href:'/analysis' },
-  { id:'application-impact', number:'08', label:'Application Impact', shortLabel:'Impact', href:'/application-impact' },
+export interface TrackingSequence { sequence: string; regime: string | null; frame_rate: number | null; frames_evaluated: number[] | null; metrics: TrackingMetrics; official_trackeval: Record<string, number> | null; project_diagnostics: Record<string, unknown> | null }
+export interface TrackingGroup { name: string; primary: boolean; tracker_settings: Record<string, unknown> | null; sequences: TrackingSequence[] }
+export interface TrackingResult { experiment: Experiment; source: string; groups: TrackingGroup[]; pooled_result: unknown; not_satisfied?: string[] | null; prediction_note?: string | null; official_note?: string | null; cadence?: string | null; not_p1?: boolean | null; not_p9?: boolean | null }
+
+export interface Selection { population: string; history: number; populations: string[]; histories: number[]; population_label: string | null; aggregation: string | null; scope_label: string | null }
+export interface SelectionQuery { population?: string; history?: number }
+
+export interface Figure { name: string; figure: string; scene: string | null; condition: string | null; history: string | null; predictor: string | null; population: string | null }
+export interface MonotonicityRow { scene: string; condition: string; rule?: string; status: string }
+export interface ErrorRow { scene: string; predictor: string; condition: string; severity_measure: string | null; requested: number | null; achieved: number | null; achieved_by_seed: Record<string, number> | null; seed_spread: { sd?: number | null; min?: number | null; max?: number | null } | null; ade_m: Stat | null; d_ade: Stat | null; prediction_coverage: Stat | null; windows_by_seed: Record<string, { eligible: number; predicted: number }> | null; undefined_reason_by_seed: Record<string, string | null> | null }
+export interface ErrorResult { experiment: Experiment; source: string; selection?: Selection; rows?: ErrorRow[]; monotonicity?: MonotonicityRow[] | null; blocked?: Record<string, string> | null; figures?: Figure[]; stored_conditions?: unknown }
+
+export interface CellRow { experiment: string | null; scene: string | null; fold: string | null; predictor: string | null; condition: string | null; requested_level: number | null; seed: number | null; history_len: number | null; population: string | null; status: string; achieved: { measure?: string; value?: number | null; detail?: Record<string, unknown> } | null; ade_m: number | null; fde_m: number | null; rmse_m: number | null; prediction_coverage: number | null; eligible_windows: number | null; predicted_windows: number | null; undefined_reason: string | null; reason: string | null; digest: string }
+export interface CellPage { experiment_id: string; total: number; limit: number; offset: number; digests_verified: boolean; items: CellRow[] }
+
+export interface PredictionRow { scene: string | null; predictor: string; ade_m: Stat | null; fde_m: Stat | null; rmse_m: Stat | null; prediction_coverage: Stat | number | null; de_by_step_m: number[] | null; clean_all_eligible_ade_m?: Stat | null; d_ade_paired?: Stat | null }
+export interface AcrossSceneRow { predictor: string; ade_m: Stat | null; fde_m: Stat | null; rmse_m: Stat | null; prediction_coverage: Stat | null }
+export interface PredictionResult { experiment: Experiment; source: string; selection?: Selection; rows: PredictionRow[]; across_scenes: AcrossSceneRow[]; coverage_by_scene?: Record<string, Record<string, unknown> | null> }
+
+export interface CurveLevel { requested: number | null; achieved_seed_mean: number | null; s_norm: number | null; ade_m: Stat | null; fde_m: Stat | null; rmse_m: Stat | null; prediction_coverage: Stat | null; d_ade: Stat | null; d_fde: Stat | null; de_by_step_m: number[] | null; windows_by_seed: Record<string, { eligible: number; predicted: number }> | null; undefined_reason_by_seed: Record<string, string | null> | null }
+export interface Curve { severity_measure: string | null; audc: { status?: string; value?: number | null; reason?: string | null } | null; robustness: { value?: number | null; reason?: string | null } | null; levels: CurveLevel[] }
+export type Curves = Record<string, Record<string, Record<string, Curve>>>
+export interface AcrossLevel { requested: number | null; achieved: Stat | null; ade_m: Stat | null; fde_m: Stat | null; rmse_m?: Stat | null; prediction_coverage?: Stat | null }
+export interface FamilyEntry { value: number | null; status?: string; reason?: string | null; valid?: Record<string, number>; n_valid?: number }
+export interface Hypothesis { research_verdict: string; reason: string | null }
+export interface P15Row { audc_best: number | null; clean_ade_best: number | null; clean_fde_best: number | null; minimum_history: number | null; partial_folds: boolean | null; status: string | null; reason: string | null }
+export interface SweepAnalysis { experiment: Experiment; source: 'sweep'; selection: Selection; curves: Curves; family_audc: Record<string, Record<string, FamilyEntry>> | null; across_scenes: Record<string, Record<string, { levels: AcrossLevel[] }>> | null; p15: Record<string, Record<string, P15Row>> | null; monotonicity: MonotonicityRow[] | null; hypotheses: Record<string, Hypothesis> | null; blocked: Record<string, string> | null; failures: unknown[] | null }
+
+export interface InverseEntry { q: number | null; s_star: number | null; status: string; reason: string | null; severity_measure: string | null; maximum_observed_severity: number | null; verified_up_to: number | null }
+export interface InverseGroup { level: string; metric: string; not_a_requirement: string; entries: Record<string, InverseEntry> }
+export interface CrossingEntry { status: string; s_crossing: number | null; reason: string | null; lower_before?: string | null; points?: number | null }
+export interface CrossingGroup { level: string; metric: string; conditional_on: string; not_implemented: string; per_scene: Record<string, CrossingEntry>; across_synthetic_scenes?: Record<string, CrossingEntry> }
+export interface AssociationPair { HOTA: number | null; IDF1: number | null; IDSW: number | null; MOTA: number | null; ade_m: number | null }
+export interface AssociationPredictor { correlations: Record<string, { n: number | null; value: number | null; reason: string | null }>; pairs: Record<string, AssociationPair>; paired_observations: number | null; scene_count: number | null; tracker_count: number | null; h7_verdict: string; inference: string | null }
+export interface EngineeringAnalysis {
+  experiment: Experiment
+  source: 'engineering_analysis'
+  label: string | null
+  family_across_scenes: { level?: string; note?: string; scenes?: string[]; by_condition: Record<string, { value: number | null; sd?: number | null; status?: string; n_valid_scenes?: number; n_undefined_scenes?: number }> } | null
+  e5_p13_engineering: { level: string; h7_verdict: string; population: string; statistical_unit: string; not_p13: boolean; by_predictor: Record<string, AssociationPredictor> } | null
+  e6_dominant_dry_run: { status: string; target: string | null; targets: string[]; co_dominant: boolean; codominance_gap: number | null; note: string; population: string; research_selection: string; research_selection_applied: boolean; candidates: Record<string, { qualifies: boolean; reason: string | null; value: number | null }> } | null
+  e7_inverse_mapping: { synthetic?: InverseGroup; ethhotel?: InverseGroup } | null
+  e8_threshold_crossings: { synthetic?: CrossingGroup; ethhotel?: CrossingGroup } | null
+  input_runs: InputRun[]
+  ethhotel_family: string | null
+  blocked: Record<string, string> | null
+  deferred: Record<string, string> | null
+}
+export type AnalysisResult = SweepAnalysis | EngineeringAnalysis
+// Where a recorded input of E5 to E8 lives now. `unchanged` means a stored file still has the recorded hash.
+export interface InputRun { input: string; used_by: string[]; run: string | null; unchanged: boolean }
+
+export type DatasetName = 'EWAP' | 'UCY' | 'MOT17' | 'Synthetic'
+export type VideoState = 'ready' | 'preparing' | 'missing' | 'failed'
+export interface WorkspaceScene { id: string; dataset: DatasetName; name: string; parent: string | null; regime: string; has_video: boolean; errors_available: boolean; errors_reason: string | null; evidence_level: EvidenceLevel; predictors: string[]; stored_run: string | null; detector: string | null; video_state: VideoState; unit: string; caution: string | null }
+export interface ErrorControl { max: number; unit: string; protocol_max: number | null }
+export type ErrorControls = Record<'A' | 'B' | 'C' | 'D', ErrorControl>
+export interface WorkspaceCatalogue { items: WorkspaceScene[]; controls: ErrorControls; pixel_controls: ErrorControls; ffmpeg_available: boolean; exploratory_label: string }
+export interface VideoStatus { state: VideoState; width?: number; height?: number; fps?: number; frames?: number; reason?: string }
+export interface OverlayTrack { id: number; frames: number[]; uv: [number, number][]; boxes: number[][]; dropped?: number[]; segment?: number[] }
+export interface CleanTracks { scene: string; source: string; note: string | null; frame_step: number; history_len: number | null; horizon_len: number | null; tracks: OverlayTrack[] }
+export interface ErrorSettings { a: number; b: number; c: number; d: number; reconstruct: boolean }
+export const noErrors: ErrorSettings = { a: 0, b: 0, c: 0, d: 0, reconstruct: false }
+export const anyError = (errors: ErrorSettings) => errors.a > 0 || errors.b > 0 || errors.c > 0 || errors.d > 0
+export interface OverlayEvent { frame: number; kind: 'switch' | 'split'; a: number; b: number | null }
+// Values are in the result's `unit`: metres, or video pixels on a scene with no calibration.
+export interface InjectionPredictor { ade: number | null; fde: number | null; rmse: number | null; prediction_coverage: number | null; de_by_step: number[] | null; clean_ade: number | null; clean_fde: number | null; clean_rmse: number | null; clean_de_by_step: number[] | null; clean_same_windows_ade: number | null; ade_change: number | null; seeds_with_predictions: number; undefined_reason: string | null }
+export interface InjectionResult {
+  scene: string
+  exploratory: true
+  active: string[]
+  unit: string
+  label: string
+  seeds: number[]
+  request: { a_sigma: number; b_p: number; c_p: number; d_p: number; reconstruct: boolean }
+  achieved: Record<string, { measure: string; by_seed: Record<string, number | null>; mean: number | null }>
+  predictors: Record<string, InjectionPredictor>
+  windows: { eligible: number; predicted_by_seed: Record<string, number>; lost_by_reason: Record<string, number> }
+  overlay: { seed: number; tracks: OverlayTrack[]; events: OverlayEvent[]; events_total: number; predicted: Record<string, Record<string, [number, [number, number][]][]>> }
+}
+
+export type NoisePoint = [number, number]
+export interface NoiseExampleData { scene: string; exploratory: true; unit: string; label: string; seed: number; person: number; frames: number[]; image_coordinates: boolean; observed: NoisePoint[]; future: NoisePoint[]; levels: { name: string; sigma: number; noisy: NoisePoint[] }[] }
+
+// Every error at every tested level on one scene, measured live and never saved. Values are in the sweep's `unit`.
+export type ErrorCode = 'A' | 'B' | 'C' | 'D'
+export interface SweepPredictor { ade: number | null; fde: number | null; ade_rise: number | null; fde_rise: number | null; de_by_step: number[] | null }
+export interface SweepLevel { requested: number; achieved: number | null; coverage: number | null; predictors: Record<string, SweepPredictor> }
+export interface SweepLimit { status: string; value: number | null; verified_up_to: number | null; tested_up_to: number | null }
+export interface SweepBetter { status: string; at: number | null; better_when_clean: string | null }
+export interface SweepError { code: ErrorCode; limit_on: 'ade' | 'windows_lost'; tested: number; measure: string; levels: SweepLevel[]; limits: Record<string, Record<string, SweepLimit>> | null; better: SweepBetter | null }
+export type SweepClean = Record<string, { ade: number | null; fde: number | null; de_by_step: number[] | null }>
+export interface SceneSweep { scene: string; exploratory: true; state: 'calculating' | 'ready' | 'failed'; done: number; total: number; unit: string; seeds: number[]; reason: string | null; label: string; windows: number | null; seconds_per_step: number; clean: SweepClean | null; limits_allowed: string[]; errors: SweepError[] }
+
+// The error families the sliders control. Each description says what the injector does, nothing more.
+export const errorControls: Array<{ key: 'a' | 'b' | 'c' | 'd'; code: 'A' | 'B' | 'C' | 'D'; label: string; help: string }> = [
+  { key:'a', code:'A', label:'Position noise', help:'Random offset added to every observed position.' },
+  { key:'b', code:'B', label:'Missing detections', help:'Observations removed at random.' },
+  { key:'c', code:'C', label:'Broken tracks', help:'Chance per step that a track splits into a new identity.' },
+  { key:'d', code:'D', label:'Identity switches', help:'Chance per step that two nearby people swap identities.' },
 ]
-export const emptyMetrics: TrackingMetrics = { mota:null, idf1:null, hota:null, idSwitches:null, fragmentations:null }
-export const emptyPredictionMetrics: PredictionMetrics = { ade:null, fde:null, rmse:null, perStepError:[], coverage:null }
-export const createInitialExperiment = (): Experiment => ({ experimentId:'TV-2026-001', timestamp:new Date().toISOString(), sourceType:'dataset', sourceName:'ETH / Hotel', sourceHash:null, dataset:'ETH', scene:'Hotel', regime:'Static camera', groundTruthAvailable:true, detector:'YOLO', detectorVersion:null, detectorParameters:{}, tracker:'ByteTrack', trackerVersion:null, trackerParameters:{}, stabilizer:null, stabilizerVersion:null, predictor:null, predictorVersion:null, predictorParameters:{}, historyLength:null, horizonLength:null, errorType:null, errorParameters:{}, requestedSeverity:null, achievedSeverity:null, mitigation:null, seed:null, status:'draft', artifacts:[], results:{} })
-export const createInitialState = (): ExperimentState => ({ experiment:createInitialExperiment(), activeStage:'overview', video:null, sourceType:'dataset', groundTruthStatus:'available', tracking:null, errorConfiguration:null, errorResult:null, predictionConfiguration:{ models:['Constant Velocity'], historyLength:12, horizonLength:12, selectedTrack:null }, prediction:null, filters:{} })
-export const isQuantitativeEvaluationAvailable = (state: ExperimentState) => state.groundTruthStatus === 'available'
-export const isPredictionReady = (state: ExperimentState) => Boolean(state.tracking)
-export const isImpactReady = (state: ExperimentState) => Boolean(state.prediction?.metrics)
-export const formatMetric = (value: number | null) => value === null ? '—' : value.toFixed(3)
-export const errorFamilies: Array<{type: ErrorType; code: string; description: string}> = [
-  {type:'Localization Noise', code:'A', description:'Perturb observed object positions with a configurable noise distribution.'},
-  {type:'Observation Dropout', code:'B', description:'Remove observations according to a controlled probability and pattern.'},
-  {type:'Track Fragmentation', code:'C', description:'Introduce controlled breaks in an otherwise continuous track.'},
-  {type:'Identity Switching', code:'D', description:'Test sensitivity to controlled identity assignment changes.'},
-  {type:'Ego-Motion Error', code:'E', description:'Perturb camera-motion compensation inputs for moving-camera regimes.'},
-]
-export const mockDatasets: Dataset[] = [
-  {id:'eth', name:'ETH', scene:'Hotel', sequence:'hotel', frameCount:3548, fps:25, resolution:'640 × 480', annotationAvailability:'available', calibrationAvailability:'available', regime:'Static camera'},
-  {id:'hotel', name:'HOTEL', scene:'Hotel', sequence:'hotel', frameCount:608, fps:25, resolution:'640 × 480', annotationAvailability:'available', calibrationAvailability:'available', regime:'Static camera'},
-  {id:'mot17', name:'MOT17', scene:'MOT17-04', sequence:'04', frameCount:1050, fps:30, resolution:'1920 × 1080', annotationAvailability:'available', calibrationAvailability:'unavailable', regime:'Moving camera'},
-  {id:'moving-placeholder', name:'Moving-camera datasets', scene:'Placeholder', sequence:'—', frameCount:0, fps:0, resolution:'—', annotationAvailability:'pending', calibrationAvailability:'pending', regime:'Moving camera'},
-]
-export const mockExperiments: Experiment[] = [createInitialExperiment(), {...createInitialExperiment(), experimentId:'TV-2026-000', sourceName:'MOT17 / 04', dataset:'MOT17', scene:'MOT17-04', status:'completed', groundTruthAvailable:true, tracker:'BoT-SORT', predictor:'LSTM', errorType:'Observation Dropout', requestedSeverity:0.2, achievedSeverity:null}]
-
-export const mockChartSeries = [{severity:0.0, ade:null, fde:null}, {severity:0.1, ade:null, fde:null}, {severity:0.2, ade:null, fde:null}, {severity:0.3, ade:null, fde:null}, {severity:0.4, ade:null, fde:null}]
-export const mockEvents = [{frame:340,label:'Localization noise begins'}, {frame:410,label:'Dropout event'}, {frame:480,label:'Identity switch'}]
-
-export function createMockTrajectory(type:'ground-truth'|'observation'|'corrupted'|'prediction', trackId=1): TrajectoryPoint[] { return Array.from({length:18}, (_, i) => ({frame:i*10, x:18+i*2.8+(type==='corrupted'?Math.sin(i)*2:0), y:72-i*2.1+(type==='prediction'?Math.cos(i)*1.3:0), trackId, trajectoryType:type})) }
-
-export const demoIndicator = 'MOCK DATA · UI DEVELOPMENT ONLY'
-

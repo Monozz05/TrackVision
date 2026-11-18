@@ -169,12 +169,17 @@ domains:
   error_mode: [none, A, B1, B2, C, D, E1, E2, E3]   # "combined" is added with P-10
 
 research_choices:
-  seeds:
-    value: null
+  seeds:                                    # decided 2026-10-31: docs/decisions/0001-p2d-protocol-decisions.md (B)
+    value: [0, 1, 2]
     required_by: Implementation Plan 'Phase 2 - Predictors and the clean baseline'
     spec: §5.3 requires at least frozen.protocol.min_seeds seeds; the values are not specified
-  inner_validation_rotation:
-    value: null
+  inner_validation_rotation:                # decided 2026-10-31: docs/decisions/0001-p2d-protocol-decisions.md (C)
+    value:                                  # real ETH/UCY static scenes only; never used for synthetic scenes
+      ETH: UNIV
+      HOTEL: ZARA1
+      UNIV: ZARA2
+      ZARA1: ETH
+      ZARA2: HOTEL
     required_by: Implementation Plan 'Phase 2 - Predictors and the clean baseline'
     spec: §5.4 requires a fixed deterministic rule recorded in config, mapping each test scene to a different validation scene
   moving_dataset:

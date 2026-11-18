@@ -10,6 +10,17 @@ ALL_RESEARCH_CHOICES = {
     "seeds", "inner_validation_rotation", "moving_dataset", "trackers_evaluated_set",
     "tracker_params", "h8_generation_attempts", "discontinuity_rejection_v_max_mps",
 }
+# Fixed by docs/decisions/0001-p2d-protocol-decisions.md (B, C); every other choice is still null.
+DECIDED_CHOICES = {
+    "seeds": [0, 1, 2],
+    "inner_validation_rotation": {"ETH": "UNIV", "HOTEL": "ZARA1", "UNIV": "ZARA2", "ZARA1": "ETH", "ZARA2": "HOTEL"},
+}
+
+
+def _with_null_seeds(base_dict):
+    """The base with `seeds` set back to null, for tests of the unresolved-choice mechanism."""
+    base_dict["research_choices"]["seeds"]["value"] = None
+    return base_dict
 
 
 def _exp(name="probe", kind="smoke", uses=(), **selection):
@@ -29,7 +40,13 @@ def _validate(write_yaml, base=None, exp=None):
 def test_base_alone_is_valid_and_lists_every_unresolved_choice():
     result = config.validate()
     assert result.status == config.VALID, result.errors
-    assert set(result.unresolved) == ALL_RESEARCH_CHOICES
+    assert set(result.unresolved) == ALL_RESEARCH_CHOICES - set(DECIDED_CHOICES)
+
+
+def test_decided_choices_hold_the_recorded_values():
+    cfg = config.validate().config
+    assert list(cfg.research_choice("seeds")) == DECIDED_CHOICES["seeds"]
+    assert dict(cfg.research_choice("inner_validation_rotation")) == DECIDED_CHOICES["inner_validation_rotation"]
 
 
 def test_base_hash_is_stable_across_loads():
@@ -42,8 +59,8 @@ def test_smoke_experiment_is_runnable():
     assert result.unresolved_used == ()
 
 
-def test_research_experiment_with_null_seeds_is_unresolved(write_yaml):
-    result = _validate(write_yaml, exp=_exp(kind="research", uses=["seeds"]))
+def test_research_experiment_with_null_seeds_is_unresolved(write_yaml, base_dict):
+    result = _validate(write_yaml, base=_with_null_seeds(base_dict), exp=_exp(kind="research", uses=["seeds"]))
     assert result.status == config.UNRESOLVED
     assert result.unresolved_used == ("seeds",)
 
@@ -171,9 +188,11 @@ def test_no_error_mode_has_no_protocol_completeness(smoke_config):
 
 # --- research-choice guards and immutability -------------------------------------------------
 
-def test_reading_an_unresolved_choice_raises():
+def test_reading_an_unresolved_choice_raises(write_yaml, base_dict):
     with pytest.raises(config.UnresolvedChoiceError):
-        config.validate().config.research_choice("seeds")
+        config.validate().config.research_choice("moving_dataset")
+    with pytest.raises(config.UnresolvedChoiceError):
+        _validate(write_yaml, base=_with_null_seeds(base_dict)).config.research_choice("seeds")
 
 
 def test_reading_an_undeclared_choice_raises_even_if_unresolved(smoke_config):
@@ -181,8 +200,8 @@ def test_reading_an_undeclared_choice_raises_even_if_unresolved(smoke_config):
         smoke_config.research_choice("seeds")
 
 
-def test_research_experiment_cannot_read_its_unresolved_choice(write_yaml):
-    cfg = _validate(write_yaml, exp=_exp(kind="research", uses=["seeds"])).config
+def test_research_experiment_cannot_read_its_unresolved_choice(write_yaml, base_dict):
+    cfg = _validate(write_yaml, base=_with_null_seeds(base_dict), exp=_exp(kind="research", uses=["seeds"])).config
     with pytest.raises(config.UnresolvedChoiceError):
         cfg.research_choice("seeds")
 

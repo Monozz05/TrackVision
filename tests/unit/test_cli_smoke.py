@@ -36,7 +36,8 @@ def test_smoke_run_writes_the_three_artifacts(tmp_path):
 
     resolved = yaml.safe_load((run_dir / "config.resolved.yaml").read_text(encoding="utf-8"))
     assert resolved["experiment"]["name"] == "smoke"
-    assert resolved["research_choices"]["seeds"]["value"] is None
+    base = yaml.safe_load((REPO_ROOT / "configs" / "base.yaml").read_text(encoding="utf-8"))
+    assert resolved["research_choices"] == base["research_choices"]
 
 
 def test_two_runs_into_separate_directories_share_id_and_hash(tmp_path):
@@ -78,12 +79,23 @@ def test_invalid_experiment_exits_2(tmp_path):
 def test_unresolved_research_experiment_exits_3_and_names_the_choice(tmp_path):
     exp = tmp_path / "research.yaml"
     exp.write_text("experiment:\n  name: clean-baseline\n  kind: research\n"
-                   "  uses_research_choices: [seeds, inner_validation_rotation]\n"
+                   "  uses_research_choices: [seeds, moving_dataset]\n"
                    "  selection: {regime: static}\n", encoding="utf-8")
     proc = _cli("run", "--config", exp, "--runs-dir", tmp_path / "runs")
     assert proc.returncode == cli.EXIT_UNRESOLVED
     assert "UNRESOLVED" in proc.stdout
-    assert "seeds  (used by this experiment)" in proc.stdout
+    assert "moving_dataset  (used by this experiment)" in proc.stdout
+    assert "- seeds" not in proc.stdout                      # decided, so no longer listed
+    assert not (tmp_path / "runs").exists()
+
+
+def test_research_experiment_using_only_decided_choices_has_no_runner_yet(tmp_path):
+    exp = tmp_path / "research.yaml"
+    exp.write_text("experiment:\n  name: clean-baseline\n  kind: research\n"
+                   "  uses_research_choices: [seeds, inner_validation_rotation]\n"
+                   "  selection: {regime: static}\n", encoding="utf-8")
+    proc = _cli("run", "--config", exp, "--runs-dir", tmp_path / "runs")
+    assert proc.returncode == cli.EXIT_NO_RUNNER, proc.stdout + proc.stderr
     assert not (tmp_path / "runs").exists()
 
 
@@ -91,8 +103,11 @@ def test_config_validate_reports_unresolved_choices_and_exits_0():
     proc = _cli("config", "validate")
     assert proc.returncode == cli.EXIT_OK, proc.stdout + proc.stderr
     assert "status: VALID" in proc.stdout
-    for name in ("seeds", "inner_validation_rotation", "moving_dataset"):
+    for name in ("moving_dataset", "trackers_evaluated_set", "tracker_params", "h8_generation_attempts",
+                 "discontinuity_rejection_v_max_mps"):
         assert f"- {name}" in proc.stdout
+    for name in ("seeds", "inner_validation_rotation"):
+        assert f"- {name}" not in proc.stdout
 
 
 def test_config_hash_command_matches_manifest(tmp_path):

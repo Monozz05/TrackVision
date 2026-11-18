@@ -1,9 +1,8 @@
-export const appConfig = { name:'TrackVision', eyebrow:'Research workspace', title:'Deep Learning-Based Multi-Object Tracking and Future Trajectory Prediction in Dynamic Environments', subtitle:'An Integrated Research Platform for Pipeline Error Propagation Analysis', apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? '', websocketUrl: process.env.NEXT_PUBLIC_WS_URL ?? '' }
+export const appConfig = { name:'TrackVision', apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000/api' }
 
 export const navItems = [
-  { label:'Dashboard', href:'/overview' },
-  { label:'Experiments', href:'/experiments' },
-  { label:'Workflow', href:'/overview' },
-  { label:'Results', href:'/analysis' },
-  { label:'Settings', href:'/settings' },
+  { label:'Workspace', href:'/workspace' },
+  { label:'Analysis', href:'/analysis' },
+  { label:'Applications', href:'/applications' },
+  { label:'Test Videos', href:'/test-videos' },
 ]
